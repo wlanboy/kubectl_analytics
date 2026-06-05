@@ -5,23 +5,25 @@ A command-line tool for gathering and visualizing statistics about Kubernetes cl
 ## Architecture
 
 ```
-main.py          — CLI commands and TUI orchestration (typer + rich)
-kubectl.py       — Kubernetes API data collection (kubernetes-client)
-output_table.py  — Rich table rendering
-output_json.py   — JSON serialization
-output_csv.py    — CSV serialization
+kubectl_analytics/
+├── __init__.py
+├── main.py          — CLI commands and TUI orchestration (typer + rich)
+├── kubectl.py       — Kubernetes API data collection (kubernetes-client)
+├── output_table.py  — Rich table rendering
+├── output_json.py   — JSON serialization
+└── output_csv.py    — CSV serialization
 ```
 
 ---
 
 ## Commands
 
-### `analytics crds`
+### `kubectl-analytics crds`
 
 CRD adoption rate — how many instances of each CRD exist across which namespaces.
 
 ```
-analytics crds [--namespace NS] [--breakdown] [--output table|json|csv] [--output-dir DIR]
+kubectl-analytics crds [--namespace NS] [--breakdown] [--output table|json|csv] [--output-dir DIR]
 ```
 
 Output (`--output table`):
@@ -48,12 +50,12 @@ With `--breakdown`, a second table shows the raw instance count per namespace ×
 
 ---
 
-### `analytics adoption`
+### `kubectl-analytics adoption`
 
 Per-namespace adoption metrics — raw counts for key platform capabilities.
 
 ```
-analytics adoption [--namespace NS] [--output table|json|csv] [--output-dir DIR]
+kubectl-analytics adoption [--namespace NS] [--output table|json|csv] [--output-dir DIR]
 ```
 
 Output:
@@ -77,13 +79,13 @@ Output:
 
 ---
 
-### `analytics istio`
+### `kubectl-analytics istio`
 
 Istio service mesh usage. Without flags, shows namespace enrollment. Flags can be combined.
 
 ```
-analytics istio [--traffic] [--external] [--policies]
-                [--namespace NS] [--output table|json|csv] [--output-dir DIR]
+kubectl-analytics istio [--traffic] [--external] [--policies]
+                        [--namespace NS] [--output table|json|csv] [--output-dir DIR]
 ```
 
 **Enrollment** (default):
@@ -137,12 +139,12 @@ ServiceEntries register external services into the mesh — databases, third-par
 
 ---
 
-### `analytics all`
+### `kubectl-analytics all`
 
 Runs all reports sequentially. Collects data first (4 steps), then renders all 6 sections.
 
 ```
-analytics all [--output table|json|csv] [--output-dir DIR]
+kubectl-analytics all [--output table|json|csv] [--output-dir DIR]
 ```
 
 ```
@@ -165,7 +167,7 @@ analytics all [--output table|json|csv] [--output-dir DIR]
 For CSV output, `--output-dir` is required — one file per report:
 
 ```bash
-analytics all --output csv --output-dir ./reports/
+kubectl-analytics all --output csv --output-dir ./reports/
 # writes: crds.csv, adoption.csv, istio.csv,
 #         istio-traffic.csv, istio-policies.csv, istio-external.csv
 ```
@@ -173,7 +175,7 @@ analytics all --output csv --output-dir ./reports/
 For JSON output, a single combined file is written when `--output-dir` is given, or streamed to stdout:
 
 ```bash
-analytics all --output json --output-dir ./reports/
+kubectl-analytics all --output json --output-dir ./reports/
 # writes: all.json  (keys: crds, adoption, istio, service_entries)
 ```
 
@@ -189,10 +191,10 @@ All commands support `--output table|json|csv`.
 
 ```bash
 # stream CSV to stdout
-analytics istio --external --output csv > external-services.csv
+kubectl-analytics istio --external --output csv > external-services.csv
 
 # write to directory
-analytics crds --output json --output-dir ./out/
+kubectl-analytics crds --output json --output-dir ./out/
 ```
 
 ---
@@ -215,20 +217,34 @@ analytics crds --output json --output-dir ./out/
 
 ## Installation
 
+### Als globales CLI-Tool (empfohlen)
+
 ```bash
-cd analytics
-uv sync
+# Wheel bauen
+uv build
+
+# Global installieren — danach steht kubectl-analytics systemweit bereit
+uv tool install dist/kubectl_analytics-0.1.0-py3-none-any.whl
+
+kubectl-analytics --help
+
+# Neu installieren nach einem Build
+uv tool install --force dist/kubectl_analytics-0.1.0-py3-none-any.whl
+
+# Deinstallieren
+uv tool uninstall kubectl-analytics
 ```
 
-This installs all dependencies (`kubernetes`, `rich`, `typer`) and creates a virtual environment.
+### Als Abhängigkeit in einem anderen Projekt
 
 ```bash
-# run via uv
-uv run analytics --help
+uv add dist/kubectl_analytics-0.1.0-py3-none-any.whl
+```
 
-# or activate the venv and run directly
-source .venv/bin/activate
-analytics --help
+### Lokal ohne Installation testen
+
+```bash
+uv run --with dist/kubectl_analytics-0.1.0-py3-none-any.whl kubectl-analytics --help
 ```
 
 ---
@@ -236,18 +252,20 @@ analytics --help
 ## Development
 
 ```bash
-cd analytics
-
-# install including dev dependencies (pyright, ruff)
-uv lock --upgrade
+# Abhängigkeiten inkl. Dev-Tools installieren
 uv sync
 
-# type checking
+# Typ-Prüfung
 uv run pyright
 
-# linting
+# Linting
 uv run ruff check
 
-# run without installing
-uv run python main.py --help
+# Direkt aus dem Quellverzeichnis starten (ohne Build)
+uv run python -m kubectl_analytics.main --help
+
+# Wheel bauen
+uv build
+# Ergebnis: dist/kubectl_analytics-0.1.0-py3-none-any.whl
+#           dist/kubectl_analytics-0.1.0.tar.gz
 ```
