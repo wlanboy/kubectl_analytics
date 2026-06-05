@@ -1,9 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "analytics"
+name = "kubectl-analytics"
 version = "0.1.0"
-description = "Kubectl analytics tool"
+description = "Kubernetes adoption and mesh statistics — per namespace."
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
+classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "kubernetes>=29.0.0",
     "rich>=13.7.0",
@@ -11,10 +17,10 @@ dependencies = [
 ]
 
 [project.scripts]
-analytics = "main:main"
+kubectl-analytics = "kubectl_analytics.main:main"
 
-[tool.setuptools]
-py-modules = ["main", "kubectl", "output_table", "output_json", "output_csv"]
+[tool.hatch.build.targets.wheel]
+packages = ["kubectl_analytics"]
 
 [dependency-groups]
 dev = [
