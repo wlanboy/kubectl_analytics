@@ -1,18 +1,26 @@
 # kubectl analytics
 
-A command-line tool for gathering and visualizing statistics about Kubernetes cluster resources — focused on adoption rates, operator usage, and service mesh coverage, always broken down **per namespace**.
+kubectl_analytics is a lightweight tool that analyzes Kubernetes logs, events, and resource states to provide actionable insights into cluster behavior.
+It helps identify patterns, anomalies, and potential issues by aggregating and interpreting data directly from the Kubernetes API.
 
-## Architecture
+The tool focuses on fast, local analytics without requiring external services or complex observability stacks.
+It is ideal for debugging, troubleshooting, and gaining a deeper understanding of what is happening inside your cluster.
 
-```
-kubectl_analytics/
-├── __init__.py
-├── main.py          — CLI commands and TUI orchestration (typer + rich)
-├── kubectl.py       — Kubernetes API data collection (kubernetes-client)
-├── output_table.py  — Rich table rendering
-├── output_json.py   — JSON serialization
-└── output_csv.py    — CSV serialization
-```
+Key capabilities include:
+
+- Collecting and analyzing pod logs
+- Inspecting Kubernetes events to detect warnings and failure patterns
+- Summarizing resource states across namespaces
+- Highlighting anomalies or repeating error messages
+- Providing human‑readable diagnostics for faster troubleshooting
+
+This makes kubectl_analytics a practical companion for:
+
+- Developers debugging workloads
+- Platform engineers analyzing cluster health
+- SREs investigating incidents
+
+Anyone who wants quick insights without deploying a full observability stack
 
 ---
 
