@@ -4,12 +4,9 @@ from __future__ import annotations
 from rich import box
 from rich.table import Table
 
-from .kubectl import (
-    AdoptionStat,
-    CRDStat,
-    IstioNamespaceStat,
-    ServiceEntryStat,
-)
+from .kubectl import AdoptionStat, CRDStat
+from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
+from .kubectl_volumes import PVSummary, VolumeStat
 
 
 def _pct(part: int, total: int) -> str:
@@ -218,5 +215,54 @@ def render_service_entries(entries: list[ServiceEntryStat]) -> Table:
             e.resolution,
             ", ".join(e.ports),
         )
+
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Volume mounts
+# ---------------------------------------------------------------------------
+
+def _gib(value: float) -> str:
+    return f"{value:.1f} GiB" if value else "[dim]0[/dim]"
+
+
+def render_volumes(stats: list[VolumeStat]) -> Table:
+    table = Table(title="Volume Mounts per Namespace", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("PVCs", justify="right")
+    table.add_column("BOUND", justify="right")
+    table.add_column("PENDING", justify="right")
+    table.add_column("REQUESTED", justify="right")
+    table.add_column("CAPACITY", justify="right")
+
+    for s in stats:
+        table.add_row(
+            s.namespace,
+            str(s.pvc_count),
+            str(s.bound),
+            f"[yellow]{s.pending}[/yellow]" if s.pending else "[dim]0[/dim]",
+            _gib(s.requested_gib),
+            _gib(s.capacity_gib),
+        )
+
+    return table
+
+
+def render_pv_summary(summary: PVSummary) -> Table:
+    table = Table(title="Persistent Volume Cluster Summary", box=box.SIMPLE_HEAD)
+    table.add_column("TOTAL PVs", justify="right")
+    table.add_column("CAPACITY", justify="right")
+    table.add_column("BOUND", justify="right")
+    table.add_column("AVAILABLE PVs", justify="right")
+    table.add_column("FREE", justify="right")
+
+    table.add_row(
+        str(summary.total_pvs),
+        _gib(summary.total_capacity_gib),
+        str(summary.bound_pvs),
+        str(summary.available_pvs),
+        _gib(summary.available_gib),
+    )
 
     return table

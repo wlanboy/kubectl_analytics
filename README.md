@@ -138,6 +138,44 @@ uv run kubectl-analytics istio --policies
 
 ---
 
+### `kubectl-analytics volumes`
+
+PersistentVolumeClaim usage per namespace — count, bound/pending state, requested and provisioned storage. Includes a cluster-level summary of all PersistentVolumes with free capacity.
+
+```bash
+uv run kubectl-analytics volumes
+```
+
+```
+kubectl-analytics volumes [--namespace NS] [--output table|csv] [--output-dir DIR]
+```
+
+Output:
+
+```
+         Volume Mounts per Namespace
+ NAMESPACE    PVCs  BOUND  PENDING  REQUESTED   CAPACITY
+ team-alpha   3     3      0        30.0 GiB    30.0 GiB
+ team-beta    1     0      1         5.0 GiB     0.0 GiB
+ platform     8     8      0       160.0 GiB   160.0 GiB
+```
+
+```
+     Persistent Volume Cluster Summary
+ TOTAL PVs  CAPACITY     BOUND  AVAILABLE PVs  FREE
+ 15         250.0 GiB    12     3              50.0 GiB
+```
+
+| Column | Source |
+|---|---|
+| `REQUESTED` | sum of `spec.resources.requests.storage` across all PVCs in the namespace |
+| `CAPACITY` | sum of `status.capacity.storage` for bound PVCs |
+| `FREE` | total capacity of PVs in `Available` phase (provisioned but unclaimed) |
+
+> Actual filesystem usage (bytes written to disk) requires metrics-server or Prometheus and is not available via the Kubernetes API.
+
+---
+
 ### `kubectl-analytics adoption`
 
 Per-namespace adoption metrics — raw counts for key platform capabilities.

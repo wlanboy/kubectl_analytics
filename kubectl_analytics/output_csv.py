@@ -5,7 +5,9 @@ import csv
 import io
 from dataclasses import asdict
 
-from .kubectl import AdoptionStat, CRDStat, IstioNamespaceStat, ServiceEntryStat
+from .kubectl import AdoptionStat, CRDStat
+from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
+from .kubectl_volumes import VolumeStat
 
 
 def _buf(fields: list[str]) -> tuple[io.StringIO, csv.DictWriter]:
@@ -55,6 +57,21 @@ def render_istio(stats: list[IstioNamespaceStat]) -> str:
     buf, writer = _buf(fields)
     for s in stats:
         writer.writerow(asdict(s))
+    return buf.getvalue()
+
+
+def render_volumes(stats: list[VolumeStat]) -> str:
+    fields = ["namespace", "pvc_count", "bound", "pending", "requested_gib", "capacity_gib"]
+    buf, writer = _buf(fields)
+    for s in stats:
+        writer.writerow({
+            "namespace": s.namespace,
+            "pvc_count": s.pvc_count,
+            "bound": s.bound,
+            "pending": s.pending,
+            "requested_gib": round(s.requested_gib, 2),
+            "capacity_gib": round(s.capacity_gib, 2),
+        })
     return buf.getvalue()
 
 

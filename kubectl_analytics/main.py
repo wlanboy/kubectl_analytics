@@ -9,6 +9,8 @@ import typer
 from rich.console import Console
 
 from . import kubectl
+from . import kubectl_istio
+from . import kubectl_volumes
 from . import output_csv
 from . import output_table
 
@@ -146,7 +148,7 @@ def istio(
         namespaces = [ns for ns in namespaces if ns.name == namespace]
 
     with console.status("Collecting Istio statistics…"):
-        stats = kubectl.get_istio_stats(namespaces)
+        stats = kubectl_istio.get_istio_stats(namespaces)
 
     # Default: show enrollment when no specific flag is given
     show_enrollment = not any([traffic, external, policies])
@@ -175,12 +177,41 @@ def istio(
     if external:
         ns_names = [ns.name for ns in namespaces]
         with console.status("Collecting ServiceEntries…"):
-            entries = kubectl.get_service_entries(ns_names)
+            entries = kubectl_istio.get_service_entries(ns_names)
         _render(
             entries, output, "istio-external", output_dir,
             output_table.render_service_entries,
             output_csv.render_service_entries,
         )
+
+# ---------------------------------------------------------------------------
+# volumes command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def volumes(
+    namespace: Annotated[Optional[str], typer.Option(
+        "--namespace", "-n", help="Limit to one namespace")] = None,
+    output: Annotated[OutputFormat, typer.Option(
+        "--output", "-o")] = OutputFormat.table,
+    output_dir: Annotated[Optional[Path], typer.Option(
+        "--output-dir")] = None,
+) -> None:
+    """Volume mount statistics per namespace."""
+    _bootstrap()
+
+    namespaces = kubectl.get_namespaces()
+    ns_names = [namespace] if namespace else [ns.name for ns in namespaces]
+
+    with console.status("Collecting volume statistics…"):
+        stats, pv_summary = kubectl_volumes.get_volume_stats(ns_names)
+
+    if output == OutputFormat.table:
+        console.print(output_table.render_volumes(stats))
+        console.print(output_table.render_pv_summary(pv_summary))
+    else:
+        _emit(output_csv.render_volumes(stats), "volumes", output_dir)
+
 
 # ---------------------------------------------------------------------------
 # Entry point
