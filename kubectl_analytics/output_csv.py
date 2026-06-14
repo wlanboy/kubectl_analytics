@@ -6,6 +6,7 @@ import io
 from dataclasses import asdict
 
 from .kubectl import AdoptionStat, CRDStat
+from .kubectl_events import EventDetail, EventNamespaceStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
 from .kubectl_logs import PodLogStat
 from .kubectl_volumes import VolumeStat
@@ -91,6 +92,37 @@ def render_logs(stats: list[PodLogStat]) -> str:
             "warning_count": s.warning_count,
             "top_error_pattern": top_pattern,
             "top_error_count": top_count,
+        })
+    return buf.getvalue()
+
+
+def render_events(stats: list[EventNamespaceStat]) -> str:
+    fields = ["namespace", "total_events", "warning_count", "top_reasons"]
+    buf, writer = _buf(fields)
+    for s in stats:
+        reasons = "; ".join(f"{r}x{c}" for r, c in s.top_reasons)
+        writer.writerow({
+            "namespace": s.namespace,
+            "total_events": s.total_events,
+            "warning_count": s.warning_count,
+            "top_reasons": reasons,
+        })
+    return buf.getvalue()
+
+
+def render_event_details(details: list[EventDetail]) -> str:
+    fields = ["namespace", "object_kind", "object_name", "reason",
+              "count", "component", "message"]
+    buf, writer = _buf(fields)
+    for d in details:
+        writer.writerow({
+            "namespace": d.namespace,
+            "object_kind": d.object_kind,
+            "object_name": d.object_name,
+            "reason": d.reason,
+            "count": d.count,
+            "component": d.component,
+            "message": d.message,
         })
     return buf.getvalue()
 

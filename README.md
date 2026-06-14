@@ -9,9 +9,9 @@ It is ideal for debugging, troubleshooting, and gaining a deeper understanding o
 Key capabilities include:
 
 - Collecting and analyzing pod logs
+- Highlighting anomalies or repeating error messages
 - Inspecting Kubernetes events to detect warnings and failure patterns
 - Summarizing resource states across namespaces
-- Highlighting anomalies or repeating error messages
 - Providing human‑readable diagnostics for faster troubleshooting
 
 This makes kubectl_analytics a practical companion for:
@@ -20,7 +20,7 @@ This makes kubectl_analytics a practical companion for:
 - Platform engineers analyzing cluster health
 - SREs investigating incidents
 
-Anyone who wants quick insights without deploying a full observability stack
+Anyone who wants quick insights without deploying a full observability stack.
 
 ---
 
@@ -188,6 +188,55 @@ With `--errors`, a second table shows the top error patterns per pod:
 > Log lines are classified as errors when they contain `ERROR`, `FATAL`, `CRITICAL`, `EXCEPTION`, or `SEVERE`.
 > Warnings are lines containing `WARN` or `WARNING`.
 > Pattern grouping strips UUIDs, IP addresses, timestamps, and bare numbers so similar messages cluster together.
+
+---
+
+### `kubectl-analytics events`
+
+Inspect Kubernetes events to detect warnings and failure patterns — shows a per-namespace summary of Warning events and their most common reasons. Use `--details` for the full event breakdown sorted by occurrence count.
+
+```bash
+uv run kubectl-analytics events
+
+# Only events from the last 30 minutes
+uv run kubectl-analytics events --since 30m
+
+# Scope to one namespace and show individual events
+uv run kubectl-analytics events --namespace team-alpha --since 1h --details
+```
+
+```
+kubectl-analytics events [--namespace NS] [--since DURATION] [--details]
+                         [--output table|csv] [--output-dir DIR]
+```
+
+Output (`--output table`):
+
+```
+        Kubernetes Event Warnings per Namespace
+ NAMESPACE    TOTAL  WARNINGS  TOP REASONS
+ team-alpha   42     8         BackOff×5, FailedScheduling×2, OOMKilling×1
+ team-beta    15     0         -
+ platform     67     21        BackOff×12, Unhealthy×6, FailedMount×3
+```
+
+With `--details`, a second table lists each warning event individually:
+
+```
+                   Kubernetes Warning Event Details
+ NAMESPACE    KIND  OBJECT           REASON            COUNT  COMPONENT  MESSAGE
+ platform     Pod   api-abc-xyz      BackOff           12     kubelet    Back-off restarting failed container…
+ platform     Pod   worker-def-456   Unhealthy         6      kubelet    Liveness probe failed: …
+ team-alpha   Pod   job-ghi-789      FailedScheduling  2      scheduler  0/3 nodes are available…
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--since DURATION` | — | Only include events with `lastTimestamp` newer than the given window (`5m`, `1h`, `2d`, …) |
+| `--details` | off | Show individual warning events sorted by count |
+
+> Warning events are Kubernetes Events with `type: Warning`. The `count` reflects how many times the Kubernetes API reports the event has fired (i.e. `event.count`).
+> `--since` filters by `lastTimestamp` client-side — the full event list is still fetched from the API.
 
 ---
 

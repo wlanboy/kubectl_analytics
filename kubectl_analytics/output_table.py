@@ -5,6 +5,7 @@ from rich import box
 from rich.table import Table
 
 from .kubectl import AdoptionStat, CRDStat
+from .kubectl_events import EventDetail, EventNamespaceStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
 from .kubectl_logs import PodLogStat
 from .kubectl_volumes import PVSummary, VolumeStat
@@ -300,6 +301,52 @@ def render_log_errors(stats: list[PodLogStat]) -> Table:
                 f"[red]{count}[/red]",
                 pattern,
             )
+
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Kubernetes events
+# ---------------------------------------------------------------------------
+
+def render_events(stats: list[EventNamespaceStat]) -> Table:
+    table = Table(title="Kubernetes Event Warnings per Namespace", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("TOTAL", justify="right")
+    table.add_column("WARNINGS", justify="right")
+    table.add_column("TOP REASONS")
+
+    for s in stats:
+        warnings_cell = (
+            f"[red]{s.warning_count}[/red]" if s.warning_count else "[dim]0[/dim]"
+        )
+        reasons = ", ".join(f"{r}×{c}" for r, c in s.top_reasons) or "[dim]-[/dim]"
+        table.add_row(s.namespace, str(s.total_events), warnings_cell, reasons)
+
+    return table
+
+
+def render_event_details(details: list[EventDetail]) -> Table:
+    table = Table(title="Kubernetes Warning Event Details", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("KIND", no_wrap=True)
+    table.add_column("OBJECT", no_wrap=True)
+    table.add_column("REASON", style="yellow", no_wrap=True)
+    table.add_column("COUNT", justify="right")
+    table.add_column("COMPONENT", no_wrap=True)
+    table.add_column("MESSAGE")
+
+    for d in details:
+        count_cell = f"[red]{d.count}[/red]" if d.count > 1 else str(d.count)
+        table.add_row(
+            d.namespace,
+            d.object_kind,
+            d.object_name,
+            d.reason,
+            count_cell,
+            d.component,
+            d.message,
+        )
 
     return table
 

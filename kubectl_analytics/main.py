@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from . import kubectl
+from . import kubectl_events
 from . import kubectl_istio
 from . import kubectl_logs
 from . import kubectl_volumes
@@ -263,6 +264,62 @@ def logs(
                 console.print(output_table.render_log_errors(pods_with_errors))
     else:
         _emit(output_csv.render_logs(stats), "logs", output_dir)
+
+
+# ---------------------------------------------------------------------------
+# events command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def events(
+    namespace: Annotated[Optional[str], typer.Option(
+        "--namespace", "-n", help="Limit to one namespace")] = None,
+    since: Annotated[Optional[str], typer.Option(
+        "--since", help="Only include events newer than this duration (e.g. 1h, 30m, 5m)")] = None,
+    details: Annotated[bool, typer.Option(
+        "--details", help="Show individual warning events (sorted by count)")] = False,
+    output: Annotated[OutputFormat, typer.Option(
+        "--output", "-o")] = OutputFormat.table,
+    output_dir: Annotated[Optional[Path], typer.Option(
+        "--output-dir")] = None,
+) -> None:
+    """Inspect Kubernetes events to detect warnings and failure patterns."""
+    _bootstrap()
+
+    since_seconds: Optional[int] = None
+    if since:
+        _units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+        unit = since[-1].lower()
+        if unit in _units and since[:-1].isdigit():
+            since_seconds = int(since[:-1]) * _units[unit]
+        else:
+            console.print(f"[red]Invalid --since value:[/red] {since!r}  "
+                          "(use e.g. 1h, 30m, 5m)")
+            raise typer.Exit(1)
+
+    namespaces = kubectl.get_namespaces()
+    ns_names = [namespace] if namespace else [ns.name for ns in namespaces]
+
+    with console.status("Collecting Kubernetes events…"):
+        stats = kubectl_events.get_event_stats(ns_names, since_seconds=since_seconds)
+
+    if output == OutputFormat.table:
+        console.print(output_table.render_events(stats))
+        if details:
+            with console.status("Collecting event details…"):
+                event_details = kubectl_events.get_event_details(
+                    ns_names, since_seconds=since_seconds,
+                )
+            if event_details:
+                console.print(output_table.render_event_details(event_details))
+    else:
+        _emit(output_csv.render_events(stats), "events", output_dir)
+        if details:
+            with console.status("Collecting event details…"):
+                event_details = kubectl_events.get_event_details(
+                    ns_names, since_seconds=since_seconds,
+                )
+            _emit(output_csv.render_event_details(event_details), "events-details", output_dir)
 
 
 # ---------------------------------------------------------------------------
