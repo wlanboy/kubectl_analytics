@@ -61,7 +61,9 @@ def render_crds_per_namespace(stats: list[CRDStat],
         table.add_column(label, justify="right")
 
     for ns in namespace_names:
-        row = [ns] + [str(s.instances_by_namespace.get(ns, 0)) for s in stats]
+        def _cell(n: int) -> str:
+            return f"[green]{n}[/green]" if n != 0 else "[dim]0[/dim]"
+        row = [ns] + [_cell(s.instances_by_namespace.get(ns, 0)) for s in stats]
         table.add_row(*row)
 
     return table

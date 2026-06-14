@@ -31,7 +31,7 @@ Anyone who wants quick insights without deploying a full observability stack
 CRD adoption rate — how many instances of each CRD exist across which namespaces.
 
 ```bash
-uv run kubectl-analytics crds
+uv run kubectl-analytics crds --breakdown
 ```
 
 ```
@@ -68,6 +68,9 @@ Istio service mesh usage. Without flags, shows namespace enrollment. Flags can b
 
 ```bash
 uv run kubectl-analytics istio
+
+#all
+uv run kubectl-analytics istio --traffic --external --policies
 ```
 
 ```
