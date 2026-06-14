@@ -213,6 +213,7 @@ def volumes(
         console.print(output_table.render_pv_summary(pv_summary))
     else:
         _emit(output_csv.render_volumes(stats), "volumes", output_dir)
+        _emit(output_csv.render_pv_summary(pv_summary), "volumes-pv-summary", output_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +279,8 @@ def events(
         "--since", help="Only include events newer than this duration (e.g. 1h, 30m, 5m)")] = None,
     details: Annotated[bool, typer.Option(
         "--details", help="Show individual warning events (sorted by count)")] = False,
+    all_events: Annotated[bool, typer.Option(
+        "--all-events", help="Include Normal events in --details (default: warnings only)")] = False,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
     output_dir: Annotated[Optional[Path], typer.Option(
@@ -309,6 +312,7 @@ def events(
             with console.status("Collecting event details…"):
                 event_details = kubectl_events.get_event_details(
                     ns_names, since_seconds=since_seconds,
+                    warnings_only=not all_events,
                 )
             if event_details:
                 console.print(output_table.render_event_details(event_details))
@@ -318,6 +322,7 @@ def events(
             with console.status("Collecting event details…"):
                 event_details = kubectl_events.get_event_details(
                     ns_names, since_seconds=since_seconds,
+                    warnings_only=not all_events,
                 )
             _emit(output_csv.render_event_details(event_details), "events-details", output_dir)
 

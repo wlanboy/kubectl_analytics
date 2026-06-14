@@ -9,7 +9,7 @@ from kubernetes import client, config
 from kubernetes.client import (
     V1CustomResourceDefinitionList,
     V1DeploymentList,
-    V1HorizontalPodAutoscalerList,
+    V2HorizontalPodAutoscalerList,
     V1NamespaceList,
     V1NetworkPolicyList,
     V1PodDisruptionBudgetList,
@@ -183,7 +183,7 @@ def get_crd_stats(namespace_names: list[str]) -> list[CRDStat]:
 def get_adoption_stats(namespace_names: list[str]) -> list[AdoptionStat]:
     v1 = client.CoreV1Api()
     apps_v1 = client.AppsV1Api()
-    autoscaling = client.AutoscalingV1Api()
+    autoscaling = client.AutoscalingV2Api()
     networking = client.NetworkingV1Api()
     custom = client.CustomObjectsApi()
 
@@ -224,7 +224,7 @@ def get_adoption_stats(namespace_names: list[str]) -> list[AdoptionStat]:
                 except ApiException:
                     pass
 
-            hpas = cast(V1HorizontalPodAutoscalerList, autoscaling.list_namespaced_horizontal_pod_autoscaler(namespace=ns)).items or []
+            hpas = cast(V2HorizontalPodAutoscalerList, autoscaling.list_namespaced_horizontal_pod_autoscaler(namespace=ns)).items or []
             hpa_targets = {h.spec.scale_target_ref.name for h in hpas}
             hpa_count = len(hpa_targets & deployment_names)
 

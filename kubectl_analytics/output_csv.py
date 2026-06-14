@@ -9,7 +9,7 @@ from .kubectl import AdoptionStat, CRDStat
 from .kubectl_events import EventDetail, EventNamespaceStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
 from .kubectl_logs import PodLogStat
-from .kubectl_volumes import VolumeStat
+from .kubectl_volumes import PVSummary, VolumeStat
 
 
 def _buf(fields: list[str]) -> tuple[io.StringIO, csv.DictWriter]:
@@ -124,6 +124,19 @@ def render_event_details(details: list[EventDetail]) -> str:
             "component": d.component,
             "message": d.message,
         })
+    return buf.getvalue()
+
+
+def render_pv_summary(summary: PVSummary) -> str:
+    fields = ["total_pvs", "total_capacity_gib", "bound_pvs", "available_pvs", "available_gib"]
+    buf, writer = _buf(fields)
+    writer.writerow({
+        "total_pvs": summary.total_pvs,
+        "total_capacity_gib": round(summary.total_capacity_gib, 2),
+        "bound_pvs": summary.bound_pvs,
+        "available_pvs": summary.available_pvs,
+        "available_gib": round(summary.available_gib, 2),
+    })
     return buf.getvalue()
 
 
