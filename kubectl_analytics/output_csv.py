@@ -7,6 +7,7 @@ from dataclasses import asdict
 
 from .kubectl import AdoptionStat, CRDStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
+from .kubectl_logs import PodLogStat
 from .kubectl_volumes import VolumeStat
 
 
@@ -71,6 +72,25 @@ def render_volumes(stats: list[VolumeStat]) -> str:
             "pending": s.pending,
             "requested_gib": round(s.requested_gib, 2),
             "capacity_gib": round(s.capacity_gib, 2),
+        })
+    return buf.getvalue()
+
+
+def render_logs(stats: list[PodLogStat]) -> str:
+    fields = ["namespace", "pod", "container", "total_lines",
+              "error_count", "warning_count", "top_error_pattern", "top_error_count"]
+    buf, writer = _buf(fields)
+    for s in stats:
+        top_pattern, top_count = s.top_errors[0] if s.top_errors else ("", 0)
+        writer.writerow({
+            "namespace": s.namespace,
+            "pod": s.pod,
+            "container": s.container,
+            "total_lines": s.total_lines,
+            "error_count": s.error_count,
+            "warning_count": s.warning_count,
+            "top_error_pattern": top_pattern,
+            "top_error_count": top_count,
         })
     return buf.getvalue()
 

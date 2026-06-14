@@ -6,6 +6,7 @@ from rich.table import Table
 
 from .kubectl import AdoptionStat, CRDStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
+from .kubectl_logs import PodLogStat
 from .kubectl_volumes import PVSummary, VolumeStat
 
 
@@ -247,6 +248,58 @@ def render_volumes(stats: list[VolumeStat]) -> Table:
             _gib(s.requested_gib),
             _gib(s.capacity_gib),
         )
+
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Pod log analysis
+# ---------------------------------------------------------------------------
+
+def render_logs(stats: list[PodLogStat]) -> Table:
+    table = Table(title="Pod Log Analysis", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("POD", no_wrap=True)
+    table.add_column("CONTAINER", no_wrap=True)
+    table.add_column("LINES", justify="right")
+    table.add_column("ERRORS", justify="right")
+    table.add_column("WARNINGS", justify="right")
+    table.add_column("TOP ERROR PATTERN")
+
+    for s in stats:
+        top = s.top_errors[0][0] if s.top_errors else "[dim]-[/dim]"
+        errors_cell = f"[red]{s.error_count}[/red]" if s.error_count else "[dim]0[/dim]"
+        warnings_cell = f"[yellow]{s.warning_count}[/yellow]" if s.warning_count else "[dim]0[/dim]"
+        table.add_row(
+            s.namespace,
+            s.pod,
+            s.container,
+            str(s.total_lines),
+            errors_cell,
+            warnings_cell,
+            top,
+        )
+
+    return table
+
+
+def render_log_errors(stats: list[PodLogStat]) -> Table:
+    table = Table(title="Log Error Patterns", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("POD", no_wrap=True)
+    table.add_column("CONTAINER", no_wrap=True)
+    table.add_column("COUNT", justify="right")
+    table.add_column("PATTERN")
+
+    for s in stats:
+        for pattern, count in s.top_errors:
+            table.add_row(
+                s.namespace,
+                s.pod,
+                s.container,
+                f"[red]{count}[/red]",
+                pattern,
+            )
 
     return table
 

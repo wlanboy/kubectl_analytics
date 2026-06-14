@@ -10,6 +10,7 @@ from rich.console import Console
 
 from . import kubectl
 from . import kubectl_istio
+from . import kubectl_logs
 from . import kubectl_volumes
 from . import output_csv
 from . import output_table
@@ -211,6 +212,57 @@ def volumes(
         console.print(output_table.render_pv_summary(pv_summary))
     else:
         _emit(output_csv.render_volumes(stats), "volumes", output_dir)
+
+
+# ---------------------------------------------------------------------------
+# logs command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def logs(
+    namespace: Annotated[Optional[str], typer.Option(
+        "--namespace", "-n", help="Limit to one namespace")] = None,
+    tail: Annotated[int, typer.Option(
+        "--tail", help="Number of log lines to fetch per pod")] = 100,
+    since: Annotated[Optional[str], typer.Option(
+        "--since", help="Only return logs newer than this duration (e.g. 1h, 30m, 5m)")] = None,
+    errors: Annotated[bool, typer.Option(
+        "--errors", help="Also show top error pattern breakdown")] = False,
+    output: Annotated[OutputFormat, typer.Option(
+        "--output", "-o")] = OutputFormat.table,
+    output_dir: Annotated[Optional[Path], typer.Option(
+        "--output-dir")] = None,
+) -> None:
+    """Collect and analyze pod logs per namespace."""
+    _bootstrap()
+
+    since_seconds: Optional[int] = None
+    if since:
+        _units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+        unit = since[-1].lower()
+        if unit in _units and since[:-1].isdigit():
+            since_seconds = int(since[:-1]) * _units[unit]
+        else:
+            console.print(f"[red]Invalid --since value:[/red] {since!r}  "
+                          "(use e.g. 1h, 30m, 5m)")
+            raise typer.Exit(1)
+
+    namespaces = kubectl.get_namespaces()
+    ns_names = [namespace] if namespace else [ns.name for ns in namespaces]
+
+    with console.status("Collecting pod logs…"):
+        stats = kubectl_logs.get_log_stats(
+            ns_names, tail_lines=tail, since_seconds=since_seconds,
+        )
+
+    if output == OutputFormat.table:
+        console.print(output_table.render_logs(stats))
+        if errors:
+            pods_with_errors = [s for s in stats if s.top_errors]
+            if pods_with_errors:
+                console.print(output_table.render_log_errors(pods_with_errors))
+    else:
+        _emit(output_csv.render_logs(stats), "logs", output_dir)
 
 
 # ---------------------------------------------------------------------------

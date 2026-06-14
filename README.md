@@ -141,6 +141,56 @@ uv run kubectl-analytics istio --policies
 
 ---
 
+### `kubectl-analytics logs`
+
+Collect and analyze pod logs per namespace — counts ERROR/WARN lines and surfaces the most common error patterns.
+
+```bash
+uv run kubectl-analytics logs --namespace mysql-replica --tail 100
+
+# Show error-pattern breakdown in a second table
+uv run kubectl-analytics logs --errors
+
+# Only logs from the last 30 minutes
+uv run kubectl-analytics logs --since 30m --errors
+```
+
+```
+kubectl-analytics logs [--namespace NS] [--tail N] [--since DURATION]
+                       [--errors] [--output table|csv] [--output-dir DIR]
+```
+
+Output (`--output table`):
+
+```
+            Pod Log Analysis
+ NAMESPACE    POD               CONTAINER  LINES  ERRORS  WARNINGS  TOP ERROR PATTERN
+ team-alpha   api-abc-xyz       api        1000   12      3         connection refused to …:…
+ team-alpha   worker-def-456    worker     500    0       1         -
+ team-beta    db-pod-ghi-789    postgres   200    0       0         -
+```
+
+With `--errors`, a second table shows the top error patterns per pod:
+
+```
+           Log Error Patterns
+ NAMESPACE    POD              CONTAINER  COUNT  PATTERN
+ team-alpha   api-abc-xyz      api        8      ERROR connection refused to …:…
+ team-alpha   api-abc-xyz      api        4      ERROR timeout waiting for …
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--tail N` | `100` | Lines fetched per container via the Kubernetes logs API |
+| `--since DURATION` | — | Return only lines newer than the given window (`5m`, `1h`, `2d`, …) |
+| `--errors` | off | Show per-pod error pattern breakdown table |
+
+> Log lines are classified as errors when they contain `ERROR`, `FATAL`, `CRITICAL`, `EXCEPTION`, or `SEVERE`.
+> Warnings are lines containing `WARN` or `WARNING`.
+> Pattern grouping strips UUIDs, IP addresses, timestamps, and bare numbers so similar messages cluster together.
+
+---
+
 ### `kubectl-analytics volumes`
 
 PersistentVolumeClaim usage per namespace — count, bound/pending state, requested and provisioned storage. Includes a cluster-level summary of all PersistentVolumes with free capacity.
