@@ -278,6 +278,56 @@ Output:
 
 ---
 
+### `kubectl-analytics deployments`
+
+Workload health across Deployments, StatefulSets, and DaemonSets — desired vs ready replicas, unavailable counts, and a per-container restart breakdown including init containers and sidecars.
+
+```bash
+uv run kubectl-analytics deployments
+
+# Scope to one namespace
+uv run kubectl-analytics deployments --namespace team-alpha
+```
+
+```
+kubectl-analytics deployments [--namespace NS] [--output table|csv] [--output-dir DIR]
+```
+
+Output (`--output table`) — two tables are always shown:
+
+**Workload Health Overview** — one row per workload:
+
+```
+                    Workload Health Overview
+ NAMESPACE    KIND         WORKLOAD          DESIRED  READY  UNAVAIL  RESTARTS  STATUS
+ team-alpha   Deployment   api-server        3        3      0        0         OK
+ team-alpha   Deployment   worker            2        1      1        5         DEGRADED
+ team-alpha   StatefulSet  postgres          1        1      0        0         OK
+ platform     DaemonSet    node-exporter     4        4      0        0         OK
+```
+
+**Pod & Container Health** — one row per container (app containers and sidecars), init containers marked `init`:
+
+```
+                              Pod & Container Health
+ NAMESPACE    WORKLOAD    POD                  PHASE    CONTAINER      INIT  RESTARTS  STATE      REASON
+ team-alpha   worker      worker-abc-xyz       Running  worker               5         waiting    CrashLoopBackOff
+ team-alpha   worker      worker-abc-xyz       Running  istio-proxy          0         running    -
+ team-alpha   postgres    postgres-0           Running  postgres             0         running    -
+ platform     node-exporter node-exp-k8s-aaa  Running  node-exporter        0         running    -
+```
+
+| Column | Source |
+|---|---|
+| `UNAVAIL` | Deployment: `status.unavailableReplicas` · StatefulSet: `spec.replicas − status.readyReplicas` · DaemonSet: `status.numberUnavailable` |
+| `RESTARTS` | Sum of all container restart counts for that workload |
+| `INIT` | Container comes from `spec.initContainers` |
+| `REASON` | `state.waiting.reason` or `state.terminated.reason` from the container status |
+
+Problematic reasons (CrashLoopBackOff, OOMKilled, ImagePullBackOff, etc.) are highlighted in red.
+
+---
+
 ### `kubectl-analytics adoption`
 
 Per-namespace adoption metrics — raw counts for key platform capabilities.

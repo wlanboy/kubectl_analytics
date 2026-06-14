@@ -6,6 +6,7 @@ import io
 from dataclasses import asdict
 
 from .kubectl import AdoptionStat, CRDStat
+from .kubectl_deployments import WorkloadHealth
 from .kubectl_events import EventDetail, EventNamespaceStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
 from .kubectl_logs import PodLogStat
@@ -137,6 +138,46 @@ def render_pv_summary(summary: PVSummary) -> str:
         "available_pvs": summary.available_pvs,
         "available_gib": round(summary.available_gib, 2),
     })
+    return buf.getvalue()
+
+
+def render_workloads(workloads: list[WorkloadHealth]) -> str:
+    fields = ["namespace", "kind", "name", "desired", "ready",
+              "unavailable", "total_restarts", "is_healthy"]
+    buf, writer = _buf(fields)
+    for wl in workloads:
+        writer.writerow({
+            "namespace": wl.namespace,
+            "kind": wl.kind,
+            "name": wl.name,
+            "desired": wl.desired,
+            "ready": wl.ready,
+            "unavailable": wl.unavailable,
+            "total_restarts": wl.total_restarts,
+            "is_healthy": wl.is_healthy,
+        })
+    return buf.getvalue()
+
+
+def render_workload_containers(workloads: list[WorkloadHealth]) -> str:
+    fields = ["namespace", "workload_kind", "workload_name", "pod",
+              "phase", "container", "is_init", "restart_count", "state", "reason"]
+    buf, writer = _buf(fields)
+    for wl in workloads:
+        for pod in wl.pods:
+            for c in pod.containers:
+                writer.writerow({
+                    "namespace": wl.namespace,
+                    "workload_kind": wl.kind,
+                    "workload_name": wl.name,
+                    "pod": pod.name,
+                    "phase": pod.phase,
+                    "container": c.name,
+                    "is_init": c.is_init,
+                    "restart_count": c.restart_count,
+                    "state": c.state,
+                    "reason": c.reason,
+                })
     return buf.getvalue()
 
 

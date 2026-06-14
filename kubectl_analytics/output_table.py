@@ -5,6 +5,7 @@ from rich import box
 from rich.table import Table
 
 from .kubectl import AdoptionStat, CRDStat
+from .kubectl_deployments import WorkloadHealth
 from .kubectl_events import EventDetail, EventNamespaceStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
 from .kubectl_logs import PodLogStat
@@ -347,6 +348,111 @@ def render_event_details(details: list[EventDetail]) -> Table:
             d.component,
             d.message,
         )
+
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Workload health
+# ---------------------------------------------------------------------------
+
+_PHASE_COLOR = {
+    "Running": "green",
+    "Succeeded": "dim",
+    "Failed": "red",
+    "Pending": "yellow",
+    "Unknown": "yellow",
+}
+
+_STATE_COLOR = {
+    "running": "green",
+    "waiting": "yellow",
+    "terminated": "dim",
+    "unknown": "dim",
+}
+
+
+def render_workload_health(workloads: list[WorkloadHealth]) -> Table:
+    table = Table(title="Workload Health Overview", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("KIND", no_wrap=True)
+    table.add_column("WORKLOAD", no_wrap=True)
+    table.add_column("DESIRED", justify="right")
+    table.add_column("READY", justify="right")
+    table.add_column("UNAVAIL", justify="right")
+    table.add_column("RESTARTS", justify="right")
+    table.add_column("STATUS", justify="center")
+
+    for wl in workloads:
+        unavail_cell = (
+            f"[red]{wl.unavailable}[/red]" if wl.unavailable else "[dim]0[/dim]"
+        )
+        restarts_cell = (
+            f"[yellow]{wl.total_restarts}[/yellow]"
+            if wl.total_restarts else "[dim]0[/dim]"
+        )
+        status_cell = "[green]OK[/green]" if wl.is_healthy else "[red]DEGRADED[/red]"
+        table.add_row(
+            wl.namespace,
+            wl.kind,
+            wl.name,
+            str(wl.desired),
+            str(wl.ready),
+            unavail_cell,
+            restarts_cell,
+            status_cell,
+        )
+
+    return table
+
+
+def render_workload_containers(workloads: list[WorkloadHealth]) -> Table:
+    table = Table(title="Pod & Container Health", box=box.SIMPLE_HEAD)
+    table.add_column("NAMESPACE", style="cyan", no_wrap=True)
+    table.add_column("WORKLOAD", no_wrap=True)
+    table.add_column("POD", no_wrap=True)
+    table.add_column("PHASE", justify="center")
+    table.add_column("CONTAINER", no_wrap=True)
+    table.add_column("INIT", justify="center")
+    table.add_column("RESTARTS", justify="right")
+    table.add_column("STATE", justify="center")
+    table.add_column("REASON")
+
+    for wl in workloads:
+        for pod in wl.pods:
+            phase_color = _PHASE_COLOR.get(pod.phase, "white")
+            phase_cell = f"[{phase_color}]{pod.phase}[/{phase_color}]"
+            if not pod.containers:
+                table.add_row(
+                    pod.namespace, wl.name, pod.name,
+                    phase_cell, "[dim]-[/dim]", "", "", "", "",
+                )
+                continue
+            for c in pod.containers:
+                state_color = _STATE_COLOR.get(c.state, "white")
+                if c.is_problem:
+                    state_color = "red"
+                state_cell = f"[{state_color}]{c.state}[/{state_color}]"
+                reason_cell = (
+                    f"[red]{c.reason}[/red]" if c.is_problem
+                    else (f"[dim]{c.reason}[/dim]" if c.reason else "[dim]-[/dim]")
+                )
+                restarts_cell = (
+                    f"[red]{c.restart_count}[/red]" if c.restart_count > 0
+                    else "[dim]0[/dim]"
+                )
+                init_cell = "[dim]init[/dim]" if c.is_init else ""
+                table.add_row(
+                    pod.namespace,
+                    wl.name,
+                    pod.name,
+                    phase_cell,
+                    c.name,
+                    init_cell,
+                    restarts_cell,
+                    state_cell,
+                    reason_cell,
+                )
 
     return table
 

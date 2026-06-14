@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from . import kubectl
+from . import kubectl_deployments
 from . import kubectl_events
 from . import kubectl_istio
 from . import kubectl_logs
@@ -325,6 +326,37 @@ def events(
                     warnings_only=not all_events,
                 )
             _emit(output_csv.render_event_details(event_details), "events-details", output_dir)
+
+
+# ---------------------------------------------------------------------------
+# deployments command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def deployments(
+    namespace: Annotated[Optional[str], typer.Option(
+        "--namespace", "-n", help="Limit to one namespace")] = None,
+    output: Annotated[OutputFormat, typer.Option(
+        "--output", "-o")] = OutputFormat.table,
+    output_dir: Annotated[Optional[Path], typer.Option(
+        "--output-dir")] = None,
+) -> None:
+    """Workload health for Deployments, StatefulSets and DaemonSets with pod and container detail."""
+    _bootstrap()
+
+    namespaces = kubectl.get_namespaces()
+    ns_names = [namespace] if namespace else [ns.name for ns in namespaces]
+
+    with console.status("Collecting workload health…"):
+        workloads = kubectl_deployments.get_workload_health(ns_names)
+
+    if output == OutputFormat.table:
+        console.print(output_table.render_workload_health(workloads))
+        console.print(output_table.render_workload_containers(workloads))
+    else:
+        _emit(output_csv.render_workloads(workloads), "workloads", output_dir)
+        _emit(output_csv.render_workload_containers(workloads),
+              "workload-containers", output_dir)
 
 
 # ---------------------------------------------------------------------------
