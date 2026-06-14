@@ -5,6 +5,7 @@ import logging
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from typing import cast
 
 from kubernetes import client
 from kubernetes.client.rest import ApiException
@@ -66,13 +67,13 @@ def get_log_stats(
 
     for ns in namespace_names:
         try:
-            pods = (v1.list_namespaced_pod(namespace=ns).items or [])
+            pods: list = getattr(v1.list_namespaced_pod(namespace=ns), "items", None) or []
         except ApiException as e:
             logger.warning("Cannot list pods in %s: %s", ns, e)
             continue
 
         for pod in pods:
-            pod_name: str = pod.metadata.name
+            pod_name: str = cast(str, pod.metadata.name)
             containers = [c.name for c in (pod.spec.containers or [])]
 
             for container in containers:
@@ -87,7 +88,7 @@ def get_log_stats(
                     if since_seconds is not None:
                         kwargs["since_seconds"] = since_seconds
 
-                    raw: str = v1.read_namespaced_pod_log(**kwargs) or ""
+                    raw: str = cast(str, v1.read_namespaced_pod_log(**kwargs) or "")
                 except ApiException as e:
                     if e.status == 400:
                         # Pod not running / container in init state — skip silently

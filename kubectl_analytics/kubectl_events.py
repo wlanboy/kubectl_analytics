@@ -5,7 +5,6 @@ import logging
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 
@@ -70,7 +69,7 @@ def get_event_stats(
 
     for ns in namespace_names:
         try:
-            events = v1.list_namespaced_event(namespace=ns).items or []
+            events: list = getattr(v1.list_namespaced_event(namespace=ns), "items", None) or []
         except ApiException as e:
             logger.warning("Cannot list events in %s: %s", ns, e)
             continue
@@ -109,7 +108,7 @@ def get_event_details(
 
     for ns in namespace_names:
         try:
-            events = v1.list_namespaced_event(namespace=ns).items or []
+            events: list = getattr(v1.list_namespaced_event(namespace=ns), "items", None) or []
         except ApiException as e:
             logger.warning("Cannot list events in %s: %s", ns, e)
             continue
