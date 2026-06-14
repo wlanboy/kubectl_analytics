@@ -30,8 +30,12 @@ Anyone who wants quick insights without deploying a full observability stack
 
 CRD adoption rate — how many instances of each CRD exist across which namespaces.
 
+```bash
+uv run kubectl-analytics crds
 ```
-kubectl-analytics crds [--namespace NS] [--breakdown] [--output table|json|csv] [--output-dir DIR]
+
+```
+kubectl-analytics crds [--namespace NS] [--breakdown] [--output table|csv] [--output-dir DIR]
 ```
 
 Output (`--output table`):
@@ -58,12 +62,88 @@ With `--breakdown`, a second table shows the raw instance count per namespace ×
 
 ---
 
+### `kubectl-analytics istio`
+
+Istio service mesh usage. Without flags, shows namespace enrollment. Flags can be combined.
+
+```bash
+uv run kubectl-analytics istio
+```
+
+```
+kubectl-analytics istio [--traffic] [--external] [--policies]
+                        [--namespace NS] [--output table|csv] [--output-dir DIR]
+```
+
+**Enrollment** (default):
+
+```
+           Istio Namespace Enrollment
+ NAMESPACE    INJECTION  SIDECARS  PODS  COVERAGE
+ team-alpha   yes        8         8     100%
+ team-beta    no         0         5       0%
+ platform     yes        12        14     85%
+ legacy       no         0         3       0%
+```
+
+- `INJECTION` — value of the `istio-injection` label on the namespace
+- `SIDECARS` — pods with an `istio-proxy` container running
+- `COVERAGE` — `sidecars / pods`
+
+**`--traffic`** — VirtualServices, DestinationRules, Gateways, ServiceEntries, WorkloadEntries per namespace:
+
+```bash
+uv run kubectl-analytics istio --traffic
+```
+
+```
+        Istio Traffic Policies per Namespace
+ NAMESPACE    VirtualServices  DestinationRules  Gateways  ServiceEntries  WorkloadEntries
+ team-alpha   4                2                 0         1               0
+ platform     9                6                 2         3               2
+ team-beta    0                0                 0         0               0
+```
+
+VirtualServices define routing rules (retries, timeouts, traffic splits). A namespace with Deployments but no VirtualServices relies on plain Kubernetes Service routing.
+
+**`--external`** — ServiceEntries detail view (external services registered in the mesh):
+
+```bash
+uv run kubectl-analytics istio --external
+```
+
+```
+          Istio External Services (ServiceEntries)
+ NAMESPACE  NAME              HOSTS                            RESOLUTION  PORTS
+ platform   stripe-api        api.stripe.com                   DNS         443/HTTPS
+ platform   internal-pg       postgresql.internal.example.com  DNS         5432/TCP
+ team-alpha legacy-erp        legacy-erp.corp                  STATIC      8080/HTTP
+```
+
+ServiceEntries register external services into the mesh — databases, third-party APIs, legacy systems. Namespaces calling external hosts without a ServiceEntry bypass all mesh policies for that traffic.
+
+**`--policies`** — PeerAuthentication and AuthorizationPolicies per namespace:
+
+```bash
+uv run kubectl-analytics istio --policies
+```
+
+```
+       Istio Security Policies per Namespace
+ NAMESPACE    PeerAuthentication  AuthorizationPolicies  mTLS-MODE
+ team-alpha   1                   3                      STRICT
+ platform     1                   8                      STRICT
+ team-beta    0                   0                      none
+```
+
+---
+
 ### `kubectl-analytics adoption`
 
 Per-namespace adoption metrics — raw counts for key platform capabilities.
 
 ```
-kubectl-analytics adoption [--namespace NS] [--output table|json|csv] [--output-dir DIR]
+kubectl-analytics adoption [--namespace NS] [--output table|csv] [--output-dir DIR]
 ```
 
 Output:
@@ -85,116 +165,12 @@ Output:
 | `FLUX` | sum of `HelmReleases` + `Kustomizations` (all API versions) |
 | `ARGO` | count of ArgoCD `Applications` |
 
----
-
-### `kubectl-analytics istio`
-
-Istio service mesh usage. Without flags, shows namespace enrollment. Flags can be combined.
-
-```
-kubectl-analytics istio [--traffic] [--external] [--policies]
-                        [--namespace NS] [--output table|json|csv] [--output-dir DIR]
-```
-
-**Enrollment** (default):
-
-```
-           Istio Namespace Enrollment
- NAMESPACE    INJECTION  SIDECARS  PODS  COVERAGE
- team-alpha   yes        8         8     100%
- team-beta    no         0         5       0%
- platform     yes        12        14     85%
- legacy       no         0         3       0%
-```
-
-- `INJECTION` — value of the `istio-injection` label on the namespace
-- `SIDECARS` — pods with an `istio-proxy` container running
-- `COVERAGE` — `sidecars / pods`
-
-**`--traffic`** — VirtualServices, DestinationRules, Gateways, ServiceEntries, WorkloadEntries per namespace:
-
-```
-        Istio Traffic Policies per Namespace
- NAMESPACE    VirtualServices  DestinationRules  Gateways  ServiceEntries  WorkloadEntries
- team-alpha   4                2                 0         1               0
- platform     9                6                 2         3               2
- team-beta    0                0                 0         0               0
-```
-
-VirtualServices define routing rules (retries, timeouts, traffic splits). A namespace with Deployments but no VirtualServices relies on plain Kubernetes Service routing.
-
-**`--external`** — ServiceEntries detail view (external services registered in the mesh):
-
-```
-          Istio External Services (ServiceEntries)
- NAMESPACE  NAME              HOSTS                            RESOLUTION  PORTS
- platform   stripe-api        api.stripe.com                   DNS         443/HTTPS
- platform   internal-pg       postgresql.internal.example.com  DNS         5432/TCP
- team-alpha legacy-erp        legacy-erp.corp                  STATIC      8080/HTTP
-```
-
-ServiceEntries register external services into the mesh — databases, third-party APIs, legacy systems. Namespaces calling external hosts without a ServiceEntry bypass all mesh policies for that traffic.
-
-**`--policies`** — PeerAuthentication and AuthorizationPolicies per namespace:
-
-```
-       Istio Security Policies per Namespace
- NAMESPACE    PeerAuthentication  AuthorizationPolicies  mTLS-MODE
- team-alpha   1                   3                      STRICT
- platform     1                   8                      STRICT
- team-beta    0                   0                      none
-```
-
----
-
-### `kubectl-analytics all`
-
-Runs all reports sequentially. Collects data first (4 steps), then renders all 6 sections.
-
-```
-kubectl-analytics all [--output table|json|csv] [--output-dir DIR]
-```
-
-```
-╭─ kubectl analytics — all reports ──────────────╮
-│ Namespaces: 24  Output: table                  │
-╰────────────────────────────────────────────────╯
-✓ [1/4] CRD statistics       3.2s
-✓ [2/4] Adoption metrics     1.8s
-✓ [3/4] Istio stats          1.1s
-✓ [4/4] Service entries      0.4s
-
-──────────── Custom Resource Adoption ────────────
- ...table...
-─────────── Adoption Rate Metrics ────────────────
- ...table...
-──────────── Istio Enrollment ────────────────────
- ...
-```
-
-For CSV output, `--output-dir` is required — one file per report:
-
-```bash
-kubectl-analytics all --output csv --output-dir ./reports/
-# writes: crds.csv, adoption.csv, istio.csv,
-#         istio-traffic.csv, istio-policies.csv, istio-external.csv
-```
-
-For JSON output, a single combined file is written when `--output-dir` is given, or streamed to stdout:
-
-```bash
-kubectl-analytics all --output json --output-dir ./reports/
-# writes: all.json  (keys: crds, adoption, istio, service_entries)
-```
-
----
 
 ## Output Formats
 
-All commands support `--output table|json|csv`.
+All commands support `--output table|csv`.
 
 - **table** (default) — rendered to the terminal with Rich
-- **json** — serialized dataclass fields; streamed to stdout or written to `--output-dir`
 - **csv** — one row per resource; streamed to stdout or written to `--output-dir`
 
 ```bash
@@ -202,7 +178,7 @@ All commands support `--output table|json|csv`.
 kubectl-analytics istio --external --output csv > external-services.csv
 
 # write to directory
-kubectl-analytics crds --output json --output-dir ./out/
+kubectl-analytics crds --output csv --output-dir ./out/
 ```
 
 ---
