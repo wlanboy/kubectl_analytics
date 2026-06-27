@@ -1,4 +1,5 @@
-# Docker
+# Docker build für kubectl analytics
+kubectl analytics als container local ausführen.
 
 ## Build
 
