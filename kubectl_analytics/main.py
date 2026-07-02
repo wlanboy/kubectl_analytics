@@ -167,14 +167,14 @@ def istio(
         _render(
             stats, output, "istio-traffic", output_dir,
             output_table.render_istio_traffic,
-            output_csv.render_istio,
+            output_csv.render_istio_traffic,
         )
 
     if policies:
         _render(
             stats, output, "istio-policies", output_dir,
             output_table.render_istio_policies,
-            output_csv.render_istio,
+            output_csv.render_istio_policies,
         )
 
     if external:
