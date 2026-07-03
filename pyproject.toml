@@ -7,7 +7,7 @@ name = "kubectl-analytics"
 version = "0.1.0"
 description = "Kubernetes adoption and mesh statistics — per namespace."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = {text = "MIT"}
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
