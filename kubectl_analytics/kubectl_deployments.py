@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any, cast
 
 from kubernetes import client
@@ -27,12 +28,34 @@ _PROBLEM_REASONS = frozenset({
 # Data models
 # ---------------------------------------------------------------------------
 
+class ContainerState(StrEnum):
+    RUNNING = "running"
+    WAITING = "waiting"
+    TERMINATED = "terminated"
+    UNKNOWN = "unknown"
+
+
+class PodPhase(StrEnum):
+    RUNNING = "Running"
+    PENDING = "Pending"
+    FAILED = "Failed"
+    SUCCEEDED = "Succeeded"
+    UNKNOWN = "Unknown"
+
+    @classmethod
+    def from_raw(cls, value: str | None) -> PodPhase:
+        try:
+            return cls(value) if value else cls.UNKNOWN
+        except ValueError:
+            return cls.UNKNOWN
+
+
 @dataclass
 class ContainerHealth:
     name: str
     restart_count: int
-    state: str    # "running", "waiting", "terminated", "unknown"
-    reason: str   # e.g. "CrashLoopBackOff", "OOMKilled", ""
+    state: ContainerState
+    reason: str   # e.g. "CrashLoopBackOff", "OOMKilled", "" — open-ended, set by Kubernetes
     is_init: bool
 
     @property
@@ -44,7 +67,7 @@ class ContainerHealth:
 class PodHealth:
     name: str
     namespace: str
-    phase: str    # "Running", "Pending", "Failed", "Succeeded", "Unknown"
+    phase: PodPhase
     containers: list[ContainerHealth] = field(default_factory=list)
 
     @property
@@ -89,16 +112,16 @@ def _selector_str(match_labels: dict[str, str] | None) -> str:
 
 
 def _container_health(cs: Any, *, is_init: bool) -> ContainerHealth:
-    state = "unknown"
+    state = ContainerState.UNKNOWN
     reason = ""
     if cs.state:
         if cs.state.running:
-            state = "running"
+            state = ContainerState.RUNNING
         elif cs.state.waiting:
-            state = "waiting"
+            state = ContainerState.WAITING
             reason = cs.state.waiting.reason or ""
         elif cs.state.terminated:
-            state = "terminated"
+            state = ContainerState.TERMINATED
             reason = cs.state.terminated.reason or ""
     return ContainerHealth(
         name=cs.name,
@@ -110,7 +133,7 @@ def _container_health(cs: Any, *, is_init: bool) -> ContainerHealth:
 
 
 def _pod_health(pod: Any, namespace: str) -> PodHealth:
-    phase = (pod.status.phase or "Unknown") if pod.status else "Unknown"
+    phase = PodPhase.from_raw(pod.status.phase if pod.status else None)
     containers: list[ContainerHealth] = []
 
     for cs in (pod.status.init_container_statuses or []) if pod.status else []:

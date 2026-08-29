@@ -5,7 +5,7 @@ from rich import box
 from rich.table import Table
 
 from .kubectl import AdoptionStat, CRDStat
-from .kubectl_deployments import WorkloadHealth
+from .kubectl_deployments import ContainerState, PodPhase, WorkloadHealth
 from .kubectl_events import EventDetail, EventNamespaceStat
 from .kubectl_istio import IstioNamespaceStat, ServiceEntryStat
 from .kubectl_logs import PodLogStat
@@ -355,18 +355,18 @@ def render_event_details(details: list[EventDetail]) -> Table:
 # ---------------------------------------------------------------------------
 
 _PHASE_COLOR = {
-    "Running": "green",
-    "Succeeded": "dim",
-    "Failed": "red",
-    "Pending": "yellow",
-    "Unknown": "yellow",
+    PodPhase.RUNNING: "green",
+    PodPhase.SUCCEEDED: "dim",
+    PodPhase.FAILED: "red",
+    PodPhase.PENDING: "yellow",
+    PodPhase.UNKNOWN: "yellow",
 }
 
 _STATE_COLOR = {
-    "running": "green",
-    "waiting": "yellow",
-    "terminated": "dim",
-    "unknown": "dim",
+    ContainerState.RUNNING: "green",
+    ContainerState.WAITING: "yellow",
+    ContainerState.TERMINATED: "dim",
+    ContainerState.UNKNOWN: "dim",
 }
 
 

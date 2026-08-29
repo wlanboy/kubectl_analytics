@@ -78,13 +78,13 @@ def get_log_stats(
 
             for container in containers:
                 try:
-                    kwargs: dict = dict(
-                        namespace=ns,
-                        name=pod_name,
-                        container=container,
-                        tail_lines=tail_lines,
-                        _preload_content=True,
-                    )
+                    kwargs: dict = {
+                        "namespace": ns,
+                        "name": pod_name,
+                        "container": container,
+                        "tail_lines": tail_lines,
+                        "_preload_content": True,
+                    }
                     if since_seconds is not None:
                         kwargs["since_seconds"] = since_seconds
 
