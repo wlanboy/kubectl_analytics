@@ -18,10 +18,8 @@ def _pct(part: int, total: int) -> str:
     return f"{part * 100 // total}%"
 
 
-def _yn(value: bool, *, color: bool = True) -> str:
-    if value:
-        return "[green]yes[/green]" if color else "yes"
-    return "[red]no[/red]" if color else "no"
+def _yn(value: bool) -> str:
+    return "[green]yes[/green]" if value else "[red]no[/red]"
 
 
 # ---------------------------------------------------------------------------
