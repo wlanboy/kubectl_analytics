@@ -138,6 +138,21 @@ def _fetch_pods(v1: client.CoreV1Api, namespace: str,
         return []
 
 
+def _build_workload(v1: client.CoreV1Api, *, kind: str, name: str, namespace: str,
+                    match_labels: dict[str, str] | None,
+                    desired: int, ready: int, unavailable: int) -> WorkloadHealth:
+    selector = _selector_str(match_labels)
+    return WorkloadHealth(
+        kind=kind,
+        name=name,
+        namespace=namespace,
+        desired=desired,
+        ready=ready,
+        unavailable=unavailable,
+        pods=_fetch_pods(v1, namespace, selector),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -152,17 +167,12 @@ def get_workload_health(namespace_names: list[str]) -> list[WorkloadHealth]:
         try:
             for d in (cast(V1DeploymentList, apps_v1.list_namespaced_deployment(namespace=ns)).items or []):
                 st = d.status
-                selector = _selector_str(
-                    d.spec.selector.match_labels if d.spec.selector else None
-                )
-                results.append(WorkloadHealth(
-                    kind="Deployment",
-                    name=d.metadata.name,
-                    namespace=ns,
+                results.append(_build_workload(
+                    v1, kind="Deployment", name=d.metadata.name, namespace=ns,
+                    match_labels=d.spec.selector.match_labels if d.spec.selector else None,
                     desired=d.spec.replicas or 0,
                     ready=st.ready_replicas or 0,
                     unavailable=st.unavailable_replicas or 0,
-                    pods=_fetch_pods(v1, ns, selector),
                 ))
         except ApiException as e:
             logger.warning("Cannot list deployments in %s: %s", ns, e)
@@ -173,17 +183,12 @@ def get_workload_health(namespace_names: list[str]) -> list[WorkloadHealth]:
                 st = s.status
                 desired = s.spec.replicas or 0
                 ready = st.ready_replicas or 0
-                selector = _selector_str(
-                    s.spec.selector.match_labels if s.spec.selector else None
-                )
-                results.append(WorkloadHealth(
-                    kind="StatefulSet",
-                    name=s.metadata.name,
-                    namespace=ns,
+                results.append(_build_workload(
+                    v1, kind="StatefulSet", name=s.metadata.name, namespace=ns,
+                    match_labels=s.spec.selector.match_labels if s.spec.selector else None,
                     desired=desired,
                     ready=ready,
                     unavailable=max(0, desired - ready),
-                    pods=_fetch_pods(v1, ns, selector),
                 ))
         except ApiException as e:
             logger.warning("Cannot list statefulsets in %s: %s", ns, e)
@@ -192,17 +197,12 @@ def get_workload_health(namespace_names: list[str]) -> list[WorkloadHealth]:
         try:
             for d in (cast(V1DaemonSetList, apps_v1.list_namespaced_daemon_set(namespace=ns)).items or []):
                 st = d.status
-                selector = _selector_str(
-                    d.spec.selector.match_labels if d.spec.selector else None
-                )
-                results.append(WorkloadHealth(
-                    kind="DaemonSet",
-                    name=d.metadata.name,
-                    namespace=ns,
+                results.append(_build_workload(
+                    v1, kind="DaemonSet", name=d.metadata.name, namespace=ns,
+                    match_labels=d.spec.selector.match_labels if d.spec.selector else None,
                     desired=st.desired_number_scheduled or 0,
                     ready=st.number_ready or 0,
                     unavailable=st.number_unavailable or 0,
-                    pods=_fetch_pods(v1, ns, selector),
                 ))
         except ApiException as e:
             logger.warning("Cannot list daemonsets in %s: %s", ns, e)
