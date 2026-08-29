@@ -189,7 +189,8 @@ def get_adoption_stats(namespace_names: list[str]) -> list[AdoptionStat]:
 
     try:
         policy = client.PolicyV1Api()
-    except Exception:
+    except AttributeError:
+        # Older kubernetes-client versions don't expose PolicyV1Api
         policy = None
 
     stats: list[AdoptionStat] = []
