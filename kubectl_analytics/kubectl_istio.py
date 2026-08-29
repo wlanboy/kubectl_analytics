@@ -10,6 +10,10 @@ from kubernetes.client.rest import ApiException
 
 from .kubectl import NamespaceInfo, _count_custom, _custom_list
 
+# Istio networking CRD API versions to try, newest first
+_NETWORKING_VERSIONS = ["v1", "v1beta1", "v1alpha3"]
+
+
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
@@ -45,7 +49,7 @@ class ServiceEntryStat:
 
 def _istio_count(custom: client.CustomObjectsApi, group: str,
                  namespace: str, plural: str) -> int:
-    return _count_custom(custom, group, ["v1", "v1beta1", "v1alpha3"], namespace, plural)
+    return _count_custom(custom, group, _NETWORKING_VERSIONS, namespace, plural)
 
 
 def _mtls_mode(custom: client.CustomObjectsApi, namespace: str) -> str:
@@ -122,7 +126,7 @@ def get_service_entries(namespace_names: list[str]) -> list[ServiceEntryStat]:
     entries: list[ServiceEntryStat] = []
 
     for ns in namespace_names:
-        for version in ["v1", "v1beta1", "v1alpha3"]:
+        for version in _NETWORKING_VERSIONS:
             try:
                 result = _custom_list(
                     custom, group="networking.istio.io", version=version,
