@@ -8,7 +8,6 @@ from kubernetes import client
 from kubernetes.client import V1PersistentVolumeClaimList, V1PersistentVolumeList
 from kubernetes.client.rest import ApiException
 
-
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------

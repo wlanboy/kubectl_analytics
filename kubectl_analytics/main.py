@@ -3,19 +3,21 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
 
-from . import kubectl
-from . import kubectl_deployments
-from . import kubectl_events
-from . import kubectl_istio
-from . import kubectl_logs
-from . import kubectl_volumes
-from . import output_csv
-from . import output_table
+from . import (
+    kubectl,
+    kubectl_deployments,
+    kubectl_events,
+    kubectl_istio,
+    kubectl_logs,
+    kubectl_volumes,
+    output_csv,
+    output_table,
+)
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -46,7 +48,7 @@ def _bootstrap() -> None:
         raise typer.Exit(1)
 
 
-def _emit(content: str, name: str, output_dir: Optional[Path]) -> None:
+def _emit(content: str, name: str, output_dir: Path | None) -> None:
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / f"{name}.csv").write_text(content, encoding="utf-8")
@@ -54,7 +56,7 @@ def _emit(content: str, name: str, output_dir: Optional[Path]) -> None:
         print(content, end="")
 
 
-def _render(data, fmt: OutputFormat, name: str, output_dir: Optional[Path],
+def _render(data, fmt: OutputFormat, name: str, output_dir: Path | None,
             table_fn, csv_fn) -> None:
     if fmt == OutputFormat.table:
         console.print(table_fn(data))
@@ -68,13 +70,13 @@ def _render(data, fmt: OutputFormat, name: str, output_dir: Optional[Path],
 
 @app.command()
 def crds(
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n", help="Limit to one namespace")] = None,
     breakdown: Annotated[bool, typer.Option(
         "--breakdown", help="Also show per-namespace instance matrix")] = False,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """CRD adoption rate across namespaces."""
@@ -101,11 +103,11 @@ def crds(
 
 @app.command()
 def adoption(
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n")] = None,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """Adoption rate metrics per namespace."""
@@ -136,11 +138,11 @@ def istio(
         "--external", help="Show external services (ServiceEntries)")] = False,
     policies: Annotated[bool, typer.Option(
         "--policies", help="Show security policies (mTLS, AuthzPolicies)")] = False,
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n")] = None,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """Istio service mesh usage per namespace."""
@@ -193,11 +195,11 @@ def istio(
 
 @app.command()
 def volumes(
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n", help="Limit to one namespace")] = None,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """Volume mount statistics per namespace."""
@@ -223,23 +225,23 @@ def volumes(
 
 @app.command()
 def logs(
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n", help="Limit to one namespace")] = None,
     tail: Annotated[int, typer.Option(
         "--tail", help="Number of log lines to fetch per pod")] = 100,
-    since: Annotated[Optional[str], typer.Option(
+    since: Annotated[str | None, typer.Option(
         "--since", help="Only return logs newer than this duration (e.g. 1h, 30m, 5m)")] = None,
     errors: Annotated[bool, typer.Option(
         "--errors", help="Also show top error pattern breakdown")] = False,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """Collect and analyze pod logs per namespace."""
     _bootstrap()
 
-    since_seconds: Optional[int] = None
+    since_seconds: int | None = None
     if since:
         _units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
         unit = since[-1].lower()
@@ -274,9 +276,9 @@ def logs(
 
 @app.command()
 def events(
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n", help="Limit to one namespace")] = None,
-    since: Annotated[Optional[str], typer.Option(
+    since: Annotated[str | None, typer.Option(
         "--since", help="Only include events newer than this duration (e.g. 1h, 30m, 5m)")] = None,
     details: Annotated[bool, typer.Option(
         "--details", help="Show individual warning events (sorted by count)")] = False,
@@ -284,13 +286,13 @@ def events(
         "--all-events", help="Include Normal events in --details (default: warnings only)")] = False,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """Inspect Kubernetes events to detect warnings and failure patterns."""
     _bootstrap()
 
-    since_seconds: Optional[int] = None
+    since_seconds: int | None = None
     if since:
         _units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
         unit = since[-1].lower()
@@ -334,11 +336,11 @@ def events(
 
 @app.command()
 def deployments(
-    namespace: Annotated[Optional[str], typer.Option(
+    namespace: Annotated[str | None, typer.Option(
         "--namespace", "-n", help="Limit to one namespace")] = None,
     output: Annotated[OutputFormat, typer.Option(
         "--output", "-o")] = OutputFormat.table,
-    output_dir: Annotated[Optional[Path], typer.Option(
+    output_dir: Annotated[Path | None, typer.Option(
         "--output-dir")] = None,
 ) -> None:
     """Workload health for Deployments, StatefulSets and DaemonSets with pod and container detail."""

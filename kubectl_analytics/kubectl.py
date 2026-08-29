@@ -9,11 +9,11 @@ from kubernetes import client, config
 from kubernetes.client import (
     V1CustomResourceDefinitionList,
     V1DeploymentList,
-    V2HorizontalPodAutoscalerList,
     V1NamespaceList,
     V1NetworkPolicyList,
     V1PodDisruptionBudgetList,
     V1PodList,
+    V2HorizontalPodAutoscalerList,
 )
 from kubernetes.client.rest import ApiException
 

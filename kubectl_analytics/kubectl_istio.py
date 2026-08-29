@@ -10,7 +10,6 @@ from kubernetes.client.rest import ApiException
 
 from .kubectl import NamespaceInfo, _count_custom, _custom_list
 
-
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------

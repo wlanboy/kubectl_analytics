@@ -4,7 +4,8 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 
@@ -44,7 +45,7 @@ _TOP_N = 5
 def _cutoff(since_seconds: int | None) -> datetime | None:
     if since_seconds is None:
         return None
-    return datetime.now(timezone.utc) - timedelta(seconds=since_seconds)
+    return datetime.now(UTC) - timedelta(seconds=since_seconds)
 
 
 def _after_cutoff(event: object, cutoff: datetime | None) -> bool:
@@ -54,7 +55,7 @@ def _after_cutoff(event: object, cutoff: datetime | None) -> bool:
     if ts is None:
         return True
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.replace(tzinfo=UTC)
     return ts >= cutoff
 
 
