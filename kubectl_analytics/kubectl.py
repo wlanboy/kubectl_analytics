@@ -15,7 +15,7 @@ from kubernetes.client import (
     V1PodList,
     V2HorizontalPodAutoscalerList,
 )
-from kubernetes.client.rest import ApiException
+from kubernetes.client.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,7 @@ def get_namespaces() -> list[NamespaceInfo]:
     return [
         NamespaceInfo(name=ns.metadata.name, labels=ns.metadata.labels or {})
         for ns in (ns_list.items or [])
+        if ns.metadata and ns.metadata.name
     ]
 
 
@@ -136,6 +137,8 @@ def get_crd_stats(namespace_names: list[str]) -> list[CRDStat]:
     stats: list[CRDStat] = []
 
     for crd in (crd_list.items or []):
+        if not crd.metadata or not crd.metadata.name:
+            continue
         spec = crd.spec
         version = _storage_version(crd)
         stat = CRDStat(
@@ -201,7 +204,7 @@ def get_adoption_stats(namespace_names: list[str]) -> list[AdoptionStat]:
             pod_count = len(pods)
             pods_with_limits = sum(
                 1 for pod in pods
-                if all(
+                if pod.spec and all(
                     c.resources and c.resources.limits
                     and "cpu" in (c.resources.limits or {})
                     and "memory" in (c.resources.limits or {})
@@ -214,7 +217,7 @@ def get_adoption_stats(namespace_names: list[str]) -> list[AdoptionStat]:
 
             deployments = cast(V1DeploymentList, apps_v1.list_namespaced_deployment(namespace=ns)).items or []
             deployment_count = len(deployments)
-            deployment_names = {d.metadata.name for d in deployments}
+            deployment_names = {d.metadata.name for d in deployments if d.metadata and d.metadata.name}
 
             pdb_count = 0
             if policy:

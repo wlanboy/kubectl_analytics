@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from kubernetes import client
 from kubernetes.client import V1PodList
-from kubernetes.client.rest import ApiException
+from kubernetes.client.exceptions import ApiException
 
 from .kubectl import NamespaceInfo, _count_custom, _custom_list
 
@@ -93,7 +93,7 @@ def get_istio_stats(namespace_infos: list[NamespaceInfo]) -> list[IstioNamespace
         pod_count = len(pods)
         sidecar_count = sum(
             1 for pod in pods
-            if any(c.name == "istio-proxy" for c in (pod.spec.containers or []))
+            if pod.spec and any(c.name == "istio-proxy" for c in pod.spec.containers)
         )
 
         stats.append(IstioNamespaceStat(

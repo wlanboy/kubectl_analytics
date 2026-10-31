@@ -9,11 +9,14 @@ from typing import Any, cast
 from kubernetes import client
 from kubernetes.client import (
     V1DaemonSetList,
+    V1DaemonSetStatus,
     V1DeploymentList,
+    V1DeploymentStatus,
     V1PodList,
     V1StatefulSetList,
+    V1StatefulSetStatus,
 )
-from kubernetes.client.rest import ApiException
+from kubernetes.client.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +192,9 @@ def get_workload_health(namespace_names: list[str]) -> list[WorkloadHealth]:
         # Deployments
         try:
             for d in (cast(V1DeploymentList, apps_v1.list_namespaced_deployment(namespace=ns)).items or []):
-                st = d.status
+                if not d.metadata or not d.metadata.name:
+                    continue
+                st = d.status or V1DeploymentStatus()
                 results.append(_build_workload(
                     v1, kind="Deployment", name=d.metadata.name, namespace=ns,
                     match_labels=d.spec.selector.match_labels if d.spec.selector else None,
@@ -203,7 +208,9 @@ def get_workload_health(namespace_names: list[str]) -> list[WorkloadHealth]:
         # StatefulSets
         try:
             for s in (cast(V1StatefulSetList, apps_v1.list_namespaced_stateful_set(namespace=ns)).items or []):
-                st = s.status
+                if not s.metadata or not s.metadata.name:
+                    continue
+                st = s.status or V1StatefulSetStatus(replicas=0)
                 desired = s.spec.replicas or 0
                 ready = st.ready_replicas or 0
                 results.append(_build_workload(
@@ -219,7 +226,12 @@ def get_workload_health(namespace_names: list[str]) -> list[WorkloadHealth]:
         # DaemonSets
         try:
             for d in (cast(V1DaemonSetList, apps_v1.list_namespaced_daemon_set(namespace=ns)).items or []):
-                st = d.status
+                if not d.metadata or not d.metadata.name:
+                    continue
+                st = d.status or V1DaemonSetStatus(
+                    current_number_scheduled=0, desired_number_scheduled=0,
+                    number_misscheduled=0, number_ready=0,
+                )
                 results.append(_build_workload(
                     v1, kind="DaemonSet", name=d.metadata.name, namespace=ns,
                     match_labels=d.spec.selector.match_labels if d.spec.selector else None,

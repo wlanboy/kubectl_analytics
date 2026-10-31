@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from kubernetes import client
 from kubernetes.client import V1PersistentVolumeClaimList, V1PersistentVolumeList
-from kubernetes.client.rest import ApiException
+from kubernetes.client.exceptions import ApiException
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -65,18 +65,18 @@ def get_volume_stats(namespace_names: list[str]) -> tuple[list[VolumeStat], PVSu
         except ApiException:
             continue
 
-        bound_pvcs   = [p for p in pvcs if p.status.phase == "Bound"]
-        pending_pvcs = [p for p in pvcs if p.status.phase == "Pending"]
+        bound_pvcs   = [p for p in pvcs if p.status and p.status.phase == "Bound"]
+        pending_pvcs = [p for p in pvcs if p.status and p.status.phase == "Pending"]
 
         requested_gib = sum(
             _parse_gib(p.spec.resources.requests.get("storage"))
             for p in pvcs
-            if p.spec.resources and p.spec.resources.requests
+            if p.spec and p.spec.resources and p.spec.resources.requests
         )
         capacity_gib = sum(
             _parse_gib(p.status.capacity.get("storage"))
             for p in bound_pvcs
-            if p.status.capacity
+            if p.status and p.status.capacity
         )
 
         stats.append(VolumeStat(
@@ -97,12 +97,12 @@ def get_volume_stats(namespace_names: list[str]) -> tuple[list[VolumeStat], PVSu
         cap = getattr(pv.spec, "capacity", None) or {}
         return _parse_gib(cap.get("storage"))
 
-    available_pvs = [pv for pv in pvs if pv.status.phase == "Available"]
+    available_pvs = [pv for pv in pvs if pv.status and pv.status.phase == "Available"]
 
     summary = PVSummary(
         total_pvs=len(pvs),
         total_capacity_gib=sum(_pv_gib(pv) for pv in pvs),
-        bound_pvs=sum(1 for pv in pvs if pv.status.phase == "Bound"),
+        bound_pvs=sum(1 for pv in pvs if pv.status and pv.status.phase == "Bound"),
         available_pvs=len(available_pvs),
         available_gib=sum(_pv_gib(pv) for pv in available_pvs),
     )

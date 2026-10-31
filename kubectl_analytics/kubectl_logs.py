@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import cast
 
 from kubernetes import client
-from kubernetes.client.rest import ApiException
+from kubernetes.client.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
