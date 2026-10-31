@@ -11,9 +11,9 @@ requires-python = ">=3.14"
 license = {text = "MIT"}
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "kubernetes>=29.0.0",
-    "rich>=13.7.0",
-    "typer>=0.12.0",
+    "kubernetes>=37.0.1",
+    "rich>=15.0.0",
+    "typer>=0.27.3",
 ]
 
 [project.scripts]
@@ -24,6 +24,6 @@ packages = ["kubectl_analytics"]
 
 [dependency-groups]
 dev = [
-    "pyright>=1.1.408",
-    "ruff>=0.15.10",
+    "pyright>=1.1.414",
+    "ruff>=0.17.3",
 ]
